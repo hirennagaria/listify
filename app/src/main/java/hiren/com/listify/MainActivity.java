@@ -9,11 +9,10 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 
-import org.apache.commons.io.FileUtils;
+import com.raizlabs.android.dbflow.sql.language.SQLite;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     ArrayList<String> items;
@@ -30,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
         //items = new ArrayList<>();
         itemsAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, items);
         lvItems.setAdapter(itemsAdapter);
+
         setupListViewListener();
     }
 
@@ -38,7 +38,7 @@ public class MainActivity extends AppCompatActivity {
         String itemText = etNewItem.getText().toString();
         itemsAdapter.add(itemText);
         etNewItem.setText("");
-        writeItems();
+        writeItems(itemsAdapter.getCount() - 1, itemText);
     }
 
     public void setupListViewListener(){
@@ -47,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
                 items.remove(i);
                 itemsAdapter.notifyDataSetChanged();
-                writeItems();
+                removeItems(i);
                 return true;
             }
         });
@@ -63,24 +63,40 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void removeItems(int itemPos) {
+        TodoItems todoItems = SQLite.select().from(TodoItems.class).where(TodoItems_Table.itemID.eq(itemPos)).querySingle();
+        todoItems.delete();
+        //SQLite.select().from(TodoItems.class).where(TodoItems)
+    }
+
     private void readItems(){
-        File fileDir = getFilesDir();
+        items = new ArrayList<String>();
+        List<TodoItems> todoItemsList = SQLite.select().from(TodoItems.class).queryList();
+        for (int i = 0; i < todoItemsList.size(); i++) {
+            items.add(i, todoItemsList.get(i).getItemName());
+        }
+
+        /*File fileDir = getFilesDir();
         File todoFile = new File(fileDir, "todo.txt");
         try{
             items = new ArrayList<String>(FileUtils.readLines(todoFile));
         } catch (IOException e) {
             items = new ArrayList<String>();
-        }
+        }*/
     }
 
-    private void writeItems(){
-        File fileDir = getFilesDir();
+    private void writeItems(int itemPos, String itemName){
+        TodoItems todoItems = new TodoItems();
+        todoItems.setItemID(itemPos);
+        todoItems.setItemName(itemName);
+        todoItems.save();
+        /*File fileDir = getFilesDir();
         File todoFile = new File(fileDir, "todo.txt");
         try{
             FileUtils.writeLines(todoFile, items);
         } catch (IOException e){
             e.printStackTrace();
-        }
+        }*/
     }
 
     @Override
@@ -92,7 +108,7 @@ public class MainActivity extends AppCompatActivity {
                 if(itemPos != -1){
                     items.set(itemPos, itemName);
                     itemsAdapter.notifyDataSetChanged();
-                    writeItems();
+                    writeItems(itemPos, itemName);
                 }
             }
         }
